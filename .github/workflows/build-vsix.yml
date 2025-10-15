@@ -1,0 +1,69 @@
+name: Build VSIX
+
+on:
+  push:
+    branches:
+      - main
+      - 'copilot/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-vscode-extension:
+    name: Build VSCode Extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: kotlin-vscode/package-lock.json
+
+      - name: Install dependencies
+        working-directory: kotlin-vscode
+        run: npm ci
+
+      - name: Compile extension
+        working-directory: kotlin-vscode
+        run: npm run compile
+
+      - name: Create dummy LSP server archive
+        run: |
+          # Create a minimal dummy zip to satisfy the unpack-server script
+          mkdir -p /tmp/dummy-lsp
+          touch /tmp/dummy-lsp/.gitkeep
+          cd /tmp && zip -r dummy-lsp.zip dummy-lsp/
+
+      - name: Package extension
+        working-directory: kotlin-vscode
+        env:
+          LSP_ZIP_PATH: /tmp/dummy-lsp.zip
+        run: |
+          # Install vsce globally
+          npm install -g @vscode/vsce
+
+          # Get version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Package the extension
+          # The vscode:prepublish script will run which packages the extension and unpacks the dummy server
+          vsce package "$VERSION" --out "../kotlin-vscode-${VERSION}.vsix"
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: kotlin-vscode-*.vsix
+          retention-days: 30
+
+      - name: List generated files
+        run: |
+          echo "Generated VSIX files:"
+          ls -lh kotlin-vscode-*.vsix
