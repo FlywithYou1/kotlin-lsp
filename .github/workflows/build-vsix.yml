@@ -80,6 +80,50 @@ jobs:
           echo "Generated VSIX files:"
           ls -lh kotlin-vscode-*.vsix
 
+      - name: Generate version tag for automated builds
+        id: auto_version
+        if: github.event_name == 'schedule' || github.event_name == 'push'
+        run: |
+          # Get base version from package.json
+          BASE_VERSION=$(cd kotlin-vscode && node -p "require('./package.json').version")
+          # Generate timestamp-based version for automated builds
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          AUTO_VERSION="${BASE_VERSION}-build.${TIMESTAMP}"
+          echo "version=${AUTO_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=v${AUTO_VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${AUTO_VERSION}"
+
+      - name: Create GitHub Release for automated builds
+        if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.auto_version.outputs.tag_name }}
+          name: Automated Build ${{ steps.auto_version.outputs.tag_name }}
+          body: |
+            ## Automated Build - Kotlin LSP VSCode Extension
+
+            **Version:** ${{ steps.auto_version.outputs.version }}
+            **Build Time:** ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+            **Commit:** ${{ github.sha }}
+
+            ### Installation
+            1. Download `kotlin-vscode-*.vsix` below
+            2. Install via VS Code: Extensions → More Actions → Install from VSIX
+            3. Ensure Java 17+ is installed
+            4. Open a Kotlin Gradle project
+
+            ### Note
+            This is an automated pre-release build from the latest code.
+            For stable releases, see [RELEASES.md](https://github.com/${{ github.repository }}/blob/main/RELEASES.md).
+
+            ---
+            **自动构建版本** - 这是最新代码的自动构建预发布版本。
+          files: |
+            kotlin-vscode-*.vsix
+          prerelease: true
+          draft: false
+          make_latest: false
+
       - name: Push artifacts to release branch
         if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_to_release_branch)
         run: |

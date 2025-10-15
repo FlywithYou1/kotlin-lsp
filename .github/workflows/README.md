@@ -26,20 +26,35 @@ The workflow runs on:
 5. Creates a dummy LSP server archive (for testing/development purposes)
 6. Packages the extension into a VSIX file using `vsce`
 7. Uploads the VSIX file as a workflow artifact (retained for 30 days)
-8. (Scheduled runs or manual with option) Pushes build artifacts to the `release` branch
+8. **Creates GitHub Release** (for scheduled builds and pushes to `main` branch)
+9. (Scheduled runs or manual with option) Pushes build artifacts to the `release` branch
 
 ### Output
 
 The workflow generates a VSIX file named `kotlin-vscode-<version>.vsix` which can be:
 - Downloaded from the GitHub Actions artifacts
+- **Downloaded from GitHub Releases** (for scheduled builds and main branch pushes)
 - Installed in VS Code via `Extensions > Install from VSIX...`
+
+### Automated Releases
+
+When triggered by:
+- **Scheduled runs** (daily at 00:00 Beijing Time)
+- **Pushes to `main` branch**
+
+The workflow automatically creates a GitHub Release with:
+- Pre-release tag (e.g., `v0.0.1-build.20251015-180000`)
+- VSIX file attached as a downloadable asset
+- Build metadata (timestamp, commit SHA)
+- Marked as pre-release (not "latest")
 
 ### Notes
 
 - This workflow creates a lightweight VSIX with a dummy LSP server for testing purposes
 - For production builds with the full LSP server, use the build process described in the main README
 - The VSIX artifact is retained for 30 days after the workflow run
-- When triggered by the daily schedule, build artifacts are automatically pushed to the `release` branch
+- **Automated builds create GitHub Releases** for easy access to latest builds
+- When triggered by the daily schedule, build artifacts are also pushed to the `release` branch
 - The scheduled build runs daily at 00:00 Beijing Time (16:00 UTC)
 
 ### Manual Trigger

@@ -57,7 +57,26 @@ Examples:
 
 ## Automated Daily Builds
 
-The **Build VSIX** workflow runs automatically every day at 00:00 Beijing Time (16:00 UTC) and pushes artifacts to the `release` branch for testing purposes.
+The **Build VSIX** workflow runs automatically in the following scenarios:
+
+### Daily Scheduled Builds
+- Runs every day at 00:00 Beijing Time (16:00 UTC)
+- **Automatically creates a GitHub Release** with timestamp-based version (e.g., `v0.0.1-build.20251015-180000`)
+- Pushes artifacts to the `release` branch
+- Marked as pre-release
+
+### Pushes to Main Branch
+- Runs on every push to the `main` branch
+- **Automatically creates a GitHub Release** with timestamp-based version
+- Marked as pre-release
+- Provides quick access to latest builds
+
+These automated builds allow you to:
+- Download the latest VSIX from GitHub Releases without waiting for manual releases
+- Test the newest features as soon as they're merged
+- Access builds directly from the Releases page instead of navigating through workflow artifacts
+
+**Note:** Automated builds are marked as pre-release and use timestamp-based versioning to distinguish them from official releases.
 
 ## Workflow Files
 
@@ -114,6 +133,29 @@ Check the workflow logs to see if:
 
 2. 工作流会自动运行并创建发布版本
 
+### 自动构建和发布
+
+系统会在以下情况下自动创建 GitHub Release：
+
+**每日定时构建**
+- 每天北京时间 00:00（UTC 16:00）自动运行
+- **自动创建 GitHub Release**，版本号基于时间戳（例如：`v0.0.1-build.20251015-180000`）
+- 推送构建产物到 `release` 分支
+- 标记为预发布版本
+
+**推送到 main 分支**
+- 每次推送到 `main` 分支时自动运行
+- **自动创建 GitHub Release**，版本号基于时间戳
+- 标记为预发布版本
+- 可以直接从 Releases 页面下载最新构建
+
+这些自动构建让您可以：
+- 无需等待手动发布，直接从 GitHub Releases 下载最新的 VSIX
+- 测试刚合并的最新功能
+- 从 Releases 页面直接访问构建，无需在工作流中查找
+
+**注意：** 自动构建会标记为预发布版本，并使用基于时间戳的版本号，以便与正式发布版本区分。
+
 ### 仅构建不发布
 
 如果只想构建 VSIX 文件而不创建正式发布：
@@ -123,3 +165,5 @@ Check the workflow logs to see if:
 3. 点击 **"Run workflow"**
 4. 可选择勾选 **"Push artifacts to release branch"** 将构建推送到 `release` 分支
 5. 从工作流运行记录中下载生成的文件
+
+**注意：** 手动触发的构建不会自动创建 GitHub Release，除非通过 "Create Release" 工作流。
