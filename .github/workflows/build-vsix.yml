@@ -83,7 +83,7 @@ jobs:
           
           # Create or checkout release branch
           git fetch origin
-          if git ls-remote --heads origin release | grep release; then
+          if git ls-remote --heads origin | grep -q '^refs/heads/release$'; then
             git checkout -b release origin/release
           else
             git checkout --orphan release
@@ -91,13 +91,24 @@ jobs:
           fi
           
           # Copy VSIX files to release branch
-          cp kotlin-vscode-*.vsix . 2>/dev/null || echo "No VSIX files found in root, checking subdirectories..."
-          find . -maxdepth 2 -name "kotlin-vscode-*.vsix" -exec cp {} . \;
+          # First, remove any old VSIX files
+          rm -f *.vsix
+          # Find and copy new VSIX files from the workspace root
+          if ls ../kotlin-vscode-*.vsix 1> /dev/null 2>&1; then
+            cp ../kotlin-vscode-*.vsix .
+          else
+            find .. -maxdepth 2 -name "kotlin-vscode-*.vsix" -not -path './\*' -exec cp {} . \;
+          fi
           
           # Add and commit artifacts
-          git add *.vsix
-          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          git commit -m "Build artifacts from ${TIMESTAMP}" || echo "No changes to commit"
-          
-          # Push to release branch
-          git push origin release
+          if ls *.vsix 1> /dev/null 2>&1; then
+            git add *.vsix
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+            git commit -m "Build artifacts from ${TIMESTAMP} (${GITHUB_SHA:0:7})"
+            
+            # Push to release branch
+            git push origin release
+          else
+            echo "No VSIX files found to commit"
+            exit 1
+          fi
