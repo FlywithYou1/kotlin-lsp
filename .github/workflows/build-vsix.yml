@@ -9,6 +9,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    # Run daily at 00:00 Beijing Time (16:00 UTC, UTC+8)
+    - cron: '0 16 * * *'
+
+permissions:
+  contents: write
 
 jobs:
   build-vscode-extension:
@@ -67,3 +73,45 @@ jobs:
         run: |
           echo "Generated VSIX files:"
           ls -lh kotlin-vscode-*.vsix
+
+      - name: Push artifacts to release branch
+        if: github.event_name == 'schedule'
+        run: |
+          # Verify VSIX files exist
+          if ! ls kotlin-vscode-*.vsix 1> /dev/null 2>&1; then
+            echo "Error: No VSIX files found to push to release branch"
+            exit 1
+          fi
+          
+          # Save VSIX files to a temporary location
+          mkdir -p /tmp/vsix-artifacts
+          cp kotlin-vscode-*.vsix /tmp/vsix-artifacts/
+          
+          # Configure git
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          
+          # Create or checkout release branch
+          git fetch origin
+          if git ls-remote --heads origin | grep -q 'refs/heads/release$'; then
+            git checkout -b release origin/release
+          else
+            git checkout --orphan release
+            git rm -rf .
+          fi
+          
+          # Copy VSIX files from temporary location to release branch
+          cp /tmp/vsix-artifacts/*.vsix .
+          
+          # Verify files were copied and commit
+          if ! ls *.vsix 1> /dev/null 2>&1; then
+            echo "Error: Failed to copy VSIX files to release branch"
+            exit 1
+          fi
+          
+          git add *.vsix
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          git commit -m "Build artifacts from ${TIMESTAMP} (${GITHUB_SHA:0:7})"
+          
+          # Push to release branch
+          git push origin release
