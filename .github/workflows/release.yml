@@ -107,17 +107,17 @@ jobs:
           name: Release ${{ steps.get_version.outputs.tag_name }}
           body: |
             ## Kotlin LSP VSCode Extension v${{ steps.get_version.outputs.version }}
-            
+
             ### Installation
             1. Download `kotlin-vscode-${{ steps.get_version.outputs.version }}.vsix`
             2. Install via VS Code: Extensions → More Actions → Install from VSIX
             3. Ensure Java 17+ is installed
             4. Open a Kotlin Gradle project
-            
+
             ### What's Included
             - Kotlin Language Server bundled for Visual Studio Code
             - Full LSP capabilities including code completion, navigation, and diagnostics
-            
+
             See [RELEASES.md](https://github.com/${{ github.repository }}/blob/main/RELEASES.md) for full changelog.
           files: |
             kotlin-vscode-*.vsix
