@@ -93,7 +93,7 @@ jobs:
           
           # Create or checkout release branch
           git fetch origin
-          if git ls-remote --heads origin | grep -q '^refs/heads/release$'; then
+          if git ls-remote --heads origin | grep -q 'refs/heads/release$'; then
             git checkout -b release origin/release
           else
             git checkout --orphan release
