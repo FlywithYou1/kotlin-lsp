@@ -9,6 +9,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      push_to_release_branch:
+        description: 'Push artifacts to release branch'
+        required: false
+        type: boolean
+        default: false
   schedule:
     # Run daily at 00:00 Beijing Time (16:00 UTC, UTC+8)
     - cron: '0 16 * * *'
@@ -75,7 +81,7 @@ jobs:
           ls -lh kotlin-vscode-*.vsix
 
       - name: Push artifacts to release branch
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.push_to_release_branch)
         run: |
           # Verify VSIX files exist
           if ! ls kotlin-vscode-*.vsix 1> /dev/null 2>&1; then

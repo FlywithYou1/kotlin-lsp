@@ -26,7 +26,7 @@ The workflow runs on:
 5. Creates a dummy LSP server archive (for testing/development purposes)
 6. Packages the extension into a VSIX file using `vsce`
 7. Uploads the VSIX file as a workflow artifact (retained for 30 days)
-8. (Scheduled runs only) Pushes build artifacts to the `release` branch
+8. (Scheduled runs or manual with option) Pushes build artifacts to the `release` branch
 
 ### Output
 
@@ -48,4 +48,68 @@ You can manually trigger this workflow from the GitHub Actions tab:
 1. Go to Actions > Build VSIX
 2. Click "Run workflow"
 3. Select the branch
-4. Click "Run workflow" button
+4. Optionally check "Push artifacts to release branch" to push to release branch
+5. Click "Run workflow" button
+
+## Create Release Workflow
+
+**File:** `release.yml`
+
+**Purpose:** Creates GitHub Releases with VSIX artifacts for distribution.
+
+### Triggers
+
+The workflow runs on:
+- Push of version tags (e.g., `v0.0.1`, `v1.2.3`)
+- Manual dispatch via GitHub Actions UI
+
+### What it does
+
+1. Checks out the repository
+2. Sets up Node.js environment (version 22)
+3. Installs npm dependencies
+4. Compiles the TypeScript extension code
+5. Creates a dummy LSP server archive
+6. Determines the version from tag or manual input
+7. Updates package.json with the specified version
+8. Packages the extension into a VSIX file
+9. Creates a GitHub Release with the VSIX file attached
+
+### Output
+
+Creates a GitHub Release with:
+- Release tag (e.g., `v0.0.1`)
+- Release title and description
+- VSIX file as a downloadable asset
+- Automatic pre-release detection based on version or manual input
+
+### Manual Trigger
+
+You can manually trigger this workflow from the GitHub Actions tab:
+1. Go to Actions > Create Release
+2. Click "Run workflow"
+3. Enter the version (e.g., `0.0.1`)
+4. Optionally check "Mark as pre-release"
+5. Click "Run workflow" button
+
+### Automatic Trigger via Tags
+
+To automatically create a release:
+1. Create and push a version tag:
+   ```bash
+   git tag v0.0.1
+   git push origin v0.0.1
+   ```
+2. The workflow will automatically run and create a GitHub Release
+
+### Pre-release Detection
+
+Releases are marked as pre-release if:
+- Manual trigger: The "Mark as pre-release" option is checked
+- Tag trigger: The version contains keywords like `alpha`, `beta`, `rc`, or `preview`
+
+## Important Notes
+
+- Both workflows require `contents: write` permission to create releases and push to branches
+- The workflows use a dummy LSP server for packaging - full production builds should include the actual LSP server
+- VSIX files from workflow artifacts expire after 30 days, but GitHub Releases persist indefinitely

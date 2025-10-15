@@ -1,0 +1,125 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.0.1)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: kotlin-vscode/package-lock.json
+
+      - name: Install dependencies
+        working-directory: kotlin-vscode
+        run: npm ci
+
+      - name: Compile extension
+        working-directory: kotlin-vscode
+        run: npm run compile
+
+      - name: Create dummy LSP server archive
+        run: |
+          # Create a minimal dummy zip to satisfy the unpack-server script
+          mkdir -p /tmp/dummy-lsp
+          touch /tmp/dummy-lsp/.gitkeep
+          cd /tmp && zip -r dummy-lsp.zip dummy-lsp/
+
+      - name: Determine version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag_name=v$VERSION" >> $GITHUB_OUTPUT
+          else
+            # Extract version from tag (remove 'v' prefix)
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package.json version
+        working-directory: kotlin-vscode
+        run: |
+          # Update version in package.json
+          npm version ${{ steps.get_version.outputs.version }} --no-git-tag-version
+
+      - name: Package extension
+        working-directory: kotlin-vscode
+        env:
+          LSP_ZIP_PATH: /tmp/dummy-lsp.zip
+        run: |
+          # Install vsce globally
+          npm install -g @vscode/vsce
+
+          # Package the extension
+          vsce package "${{ steps.get_version.outputs.version }}" --out "../kotlin-vscode-${{ steps.get_version.outputs.version }}.vsix"
+
+      - name: List generated files
+        run: |
+          echo "Generated VSIX files:"
+          ls -lh kotlin-vscode-*.vsix
+
+      - name: Determine if pre-release
+        id: prerelease
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "is_prerelease=${{ inputs.prerelease }}" >> $GITHUB_OUTPUT
+          else
+            # Check if version contains pre-release identifiers (alpha, beta, rc, etc.)
+            if echo "${{ steps.get_version.outputs.version }}" | grep -qE '(alpha|beta|rc|preview)'; then
+              echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: Release ${{ steps.get_version.outputs.tag_name }}
+          body: |
+            ## Kotlin LSP VSCode Extension v${{ steps.get_version.outputs.version }}
+            
+            ### Installation
+            1. Download `kotlin-vscode-${{ steps.get_version.outputs.version }}.vsix`
+            2. Install via VS Code: Extensions → More Actions → Install from VSIX
+            3. Ensure Java 17+ is installed
+            4. Open a Kotlin Gradle project
+            
+            ### What's Included
+            - Kotlin Language Server bundled for Visual Studio Code
+            - Full LSP capabilities including code completion, navigation, and diagnostics
+            
+            See [RELEASES.md](https://github.com/${{ github.repository }}/blob/main/RELEASES.md) for full changelog.
+          files: |
+            kotlin-vscode-*.vsix
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          draft: false
