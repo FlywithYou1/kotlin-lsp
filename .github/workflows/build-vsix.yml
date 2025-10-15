@@ -77,6 +77,12 @@ jobs:
       - name: Push artifacts to release branch
         if: github.event_name == 'schedule'
         run: |
+          # Verify VSIX files exist
+          if ! ls kotlin-vscode-*.vsix 1> /dev/null 2>&1; then
+            echo "Error: No VSIX files found to push to release branch"
+            exit 1
+          fi
+          
           # Save VSIX files to a temporary location
           mkdir -p /tmp/vsix-artifacts
           cp kotlin-vscode-*.vsix /tmp/vsix-artifacts/
@@ -97,15 +103,15 @@ jobs:
           # Copy VSIX files from temporary location to release branch
           cp /tmp/vsix-artifacts/*.vsix .
           
-          # Add and commit artifacts
-          if ls *.vsix 1> /dev/null 2>&1; then
-            git add *.vsix
-            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-            git commit -m "Build artifacts from ${TIMESTAMP} (${GITHUB_SHA:0:7})"
-            
-            # Push to release branch
-            git push origin release
-          else
-            echo "No VSIX files found to commit"
+          # Verify files were copied and commit
+          if ! ls *.vsix 1> /dev/null 2>&1; then
+            echo "Error: Failed to copy VSIX files to release branch"
             exit 1
           fi
+          
+          git add *.vsix
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          git commit -m "Build artifacts from ${TIMESTAMP} (${GITHUB_SHA:0:7})"
+          
+          # Push to release branch
+          git push origin release
